@@ -11,7 +11,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import io
-from tqdm import tqdm
+from tqdm import tqdm 
 import urllib.request
 import wget
 import re 
@@ -26,7 +26,7 @@ import re
 from urllib.parse import unquote
 image_link_to_path = {}
 import argparse
-DATASET_PATH = "/home/suyash/final_repo/WikiTableQuestions/temp_collage_images"
+DATASET_PATH = "Added in args"
 
 ############# Asyncio code to download images in a parallelized fashion################################################
 async def get_page_d(session, url, headers, max_retries=5, retry_delay=60):                                                         
@@ -78,16 +78,12 @@ async def main_d(urls, headers, delay=0, max_retries=3, retry_delay=2):
 
 
 def generate_unique_path(link, location):
-    # Function to generate a unique path for each collage/seal link's image file. Treat as a blackbox
     hash_object = hashlib.sha256()
-
-    if location :
+    if location:
         link = link + str(location)
     hash_object.update(link.encode('utf-8'))
-
     hash_hex = hash_object.hexdigest()
-    unique_path = hash_hex[:8]
-
+    unique_path = hash_hex[:15]
     return unique_path
 
 
@@ -141,9 +137,9 @@ def get_images(html, url):
     """
     Handles SVGs, TIF and other kind of images link fetching. Returns the link to the image.
     """
-    soup = BeautifulSoup(html, 'lxml')
-    req_div = soup.find('div', class_='fullImageLink')
     try :
+        soup = BeautifulSoup(html, 'lxml')
+        req_div = soup.find('div', class_='fullImageLink')
         if req_div is None:
            
             html = requests.get(url).text
@@ -171,32 +167,19 @@ def get_images(html, url):
 ######code for extraction of image links from wikipedia page ###################
 ################################################################################
 def create_collage(images, output_path):
-    # Calculate the number of rows and columns based on the number of images
     num_images = len(images)
-    if num_images == 0:
-        print("No images for collage")
-        return
     rows = int(num_images ** 0.5)
     columns = (num_images // rows) + (1 if num_images % rows != 0 else 0)
-
-    # Set the collage size (you can adjust this based on your preference)
-    collage_width = columns * 300
-    collage_height = rows * 300
-
-    # Create a new image for the collage
-    collage = Image.new('RGB', (collage_width, collage_height))
-
-    # Paste each image into the collage
+    collage_width = columns * 512
+    collage_height = rows * 512
+    collage = Image.new('RGBA', (collage_width, collage_height), (0, 0, 0, 0))
     for i, image_path in enumerate(images):
-        img = Image.open(image_path)
-        img = img.resize((300, 300))  # Resize images to fit in the collage
+        img = Image.open(image_path).convert('RGBA')
+        img = img.resize((512, 512))
         row = i // columns
         col = i % columns
-        collage.paste(img, (col * 300, row * 300))
-
-    # Save the collage
-    collage.save(output_path)
-    print(f"Collage saved at {output_path}")
+        collage.paste(img, (col * 512, row * 512), img)
+    collage.save(output_path, 'PNG')
 ###############################################################33
 def extract_landscapes(url, html):
     soup = BeautifulSoup(html, 'html.parser')
@@ -278,12 +261,18 @@ def extract_all_landscapes(results):
 #         print(e)
 #         print(url)
 #         return []
+
+
 def extract_seals(url, html):
+    if html is None:
+        print("NONE WALA HTML", url)
+        return [], False
+
     soup = BeautifulSoup(html, 'html.parser')
 
     # Find all <td> elements with class 'infobox-full-data' or 'infobox-image'
     all_table_cells = soup.find_all('td', {'class': 'infobox-full-data'}) + soup.find_all('td', {'class': 'infobox-image'}) + soup.find_all('td' , {'class':'infobox-full-data maptable'})
-
+    all_return_list = []
     # Iterate through each <td> element
     for table_cell in all_table_cells:
         if table_cell.find('div', {'class': 'locmap'}):
@@ -310,15 +299,26 @@ def extract_seals(url, html):
                     href_value = a_element.get('href')
                     title = a_element.get('title')
                     # print(title)
-                    if title is not None  and  (( not ('coa' in title.lower() or 'flag' in title.lower() or 'logo' in title.lower() or 'seal' in title.lower() or 'emblem' in title.lower())) or (not ('coa' in href_value.lower() or 'flag' in href_value.lower() or 'logo' in href_value.lower() or 'seal' in href_value.lower() or 'emb')))  :
+                    keywords = ['coa', 'flag', 'logo', 'seal', 'emblem', 'badge', 'poster']
+
+                    # Convert title and href_value to lowercase to ensure case-insensitive comparison
+                    title_lower = title.lower() if title is not None else ''
+                    href_value_lower = href_value.lower()
+
+                    # Check if any keyword is in title_lower or href_value_lower
+                    keyword_in_title = any(keyword in title_lower for keyword in keywords)
+                    keyword_in_href_value = any(keyword in href_value_lower for keyword in keywords)
+
+                    # Apply the refactored logic
+                    if title is not None and not (keyword_in_title or keyword_in_href_value):
                         # print(title)
                         break_this = True
-                        break
-                    elif (title is None) and  (not ('coa' in href_value.lower() or 'flag' in href_value.lower() or 'logo' in href_value.lower() or 'seal' in href_value.lower() or 'emblem' in href_value.lower())):
-                        # print(href_value , 'here' , return_list)
+                        # break
+                    elif title is None and not keyword_in_href_value:
+                        # print(href_value, 'here', return_list)
                         break_this = True
-                        break
-                    
+                        # break
+                        
                     # Print or use the 'href' value as needed
                     return_list.append("https://en.wikipedia.org" + href_value)
                     
@@ -327,45 +327,97 @@ def extract_seals(url, html):
                     print("No parent <a> element found.")
                 
             if break_this:
-                # return_list = []
+                all_return_list.extend(return_list)
                 continue
             elif return_list: 
-                return return_list
+                return return_list, True
+            all_return_list.extend(return_list)
     print("returning empty list")
-    print(url)
-    return []
+    print(list(set(all_return_list)), url)
+    return list(set(all_return_list)), False
+
 
 def extract_all_seals( results ):
     pagelinks_to_seals={}
+    no_imgs = {}
     for i in results: 
         url = i[0]
         html = i[1]
-        links = extract_seals(url, html )
-        pagelinks_to_seals[url] = links 
+        links, img_exists  = extract_seals(url, html )
+        if img_exists:
+            pagelinks_to_seals[url] = links
+        else:
+            no_imgs[url] = links
     
-    return pagelinks_to_seals
+    return pagelinks_to_seals, no_imgs
         
 
+def get_categories(html, url): 
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        category_list = []
+        soup = soup.find('div', {'class': 'mw-normal-catlinks'})
+        for a in soup.find_all('a', href=True):
+            if '/wiki/Category:' in a['href']:
+                category_list.append('https://en.wikipedia.org' + a['href'])
+        return category_list
+    except:
+        print('Error with ' + url)
+        return []
 
+def get_all_categories(results):
+    pagelink_to_categories={}
+    for i in results: 
+        url = i[0]
+        html = i[1]
+        links = get_categories(html, url)
+        pagelink_to_categories[url] = links; 
+        
+    return pagelink_to_categories
 
-
-
-
+def is_good_image( category_list):
+    print(category_list)
+    keywords = ['seal', 'emblem', 'logo', 'flag', 'coa', 'badge', 'poster']
+    for category in category_list:
+        if  any([keyword in category.lower() for keyword in keywords]):
+            return True
+        
+    return False
 
 if __name__=='__main__':
     
     argp = argparse.ArgumentParser()
     argp.add_argument("--location", type=int, default=0, help="0 for landscapes and 1 for seals")
-    argp.add_argument("--path", type=str, default="/home/suyash/final_repo/WikiTableQuestions/category_filtered_outputs/seal_links.json", help="path to the json file containing the Wikipedia page links in list for which landscape images are to be scraped")
+    argp.add_argument("--path", type=str, help="path to the json file containing the Wikipedia page links in list for which landscape images are to be scraped")
+    argp.add_argument("--output_dir", type=str, help="base directory in which outputs would be stored")
     args = argp.parse_args()
     
     download_images = True
     with open(args.path, 'r') as f:
         links = json.load(f)
     
-    # links = ["https://en.wikipedia.org/wiki/Italy"]
+    print("Number of links AAAAAAAA\n", len(links))
+    
+    DATASET_PATH = os.path.join(args.output_dir, "collage_images/")
+    if not os.path.exists(DATASET_PATH):
+        os.makedirs(DATASET_PATH)
     
     if args.location == 0:    
+        
+        FINAL_LINKS_TO_LANDSCAPE_PATH = os.path.join(args.output_dir, "category_filtered_outputs/links_to_landscapes.json")
+        FINAL_LINKS_TO_LANDSCAPE_COLLAGE_PATH = os.path.join(args.output_dir, "category_filtered_outputs/links_to_landscape_collage_path.json")
+
+        FINAL_LINKS_TO_LANDSCAPE_PATH = "/home/suyash/final_repo/Refactor/outputs/links_to_landscapes.json"
+        FINAL_LINKS_TO_LANDSCAPE_COLLAGE_PATH = "/home/suyash/final_repo/Refactor/outputs/links_to_landscape_collage_path.json"
+        
+        with open(FINAL_LINKS_TO_LANDSCAPE_PATH, "r") as f:
+            final_links_to_landscape = json.load(f)
+        
+        with open(FINAL_LINKS_TO_LANDSCAPE_COLLAGE_PATH, "r") as f:
+            final_links_to_landscape_collage_path = json.load(f)
+        
+        links = list(set(links) - set(final_links_to_landscape_collage_path.keys()))
+        
         links_to_landscapes={} # Wikipedia link -> List of image URLs for the landscape
         # get landscapes link from wikipedia
         for i in tqdm(range(0 , len(links) , 50 )) : 
@@ -373,7 +425,7 @@ if __name__=='__main__':
             results= asyncio.run(main(links[i:i+50], headers))
             links_to_landscapes.update(extract_all_landscapes(results))
         
-        print(links_to_landscapes)
+        print(len(links_to_landscapes))
         print()
 
         
@@ -382,7 +434,7 @@ if __name__=='__main__':
             combined_list.extend(list(i))
 
         combined_list = list(set(combined_list))
-        print(combined_list)
+        print(len(combined_list))
         file_to_image_links={}
         
         # This function gets the link to each image which can be directly downloaded
@@ -394,24 +446,12 @@ if __name__=='__main__':
             
         
         ### now we download the images and store the paths 
-        if download_images:
-            print(list(file_to_image_links.values()))
-            for i in tqdm(range(0 , len(file_to_image_links), 50 )):
-                headers = {f'User-Agent': 'walter{i}lewin{i}/1.0 (walter.lewin@standford.edu) research purpose'}
-                results = asyncio.run( main_d(list(file_to_image_links.values())[i: i+50], headers))
-        else:
-            for i in file_to_image_links:
-                new_url = re.sub(r'\?[^?]*$', '', url)
-                file_extension = new_url.split(".")[-1].lower()
-                image_name = new_url.split("/")[-1]
-                last_occurrence_index = image_name.rfind('.')
-                before_last_occurrence = unquote(image_name[:last_occurrence_index]).replace(" ", "_")
-                before_last_occurrence= before_last_occurrence[:200]
+    
+        # print(list(file_to_image_links.values()))
+        for i in tqdm(range(0 , len(file_to_image_links), 50 )):
+            headers = {f'User-Agent': 'walter{i}lewin{i}/1.0 (walter.lewin@standford.edu) research purpose'}
+            results = asyncio.run( main_d(list(file_to_image_links.values())[i: i+50], headers))
 
-            # Save the compressed image
-            path = os.path.join(DATASET_PATH, f"{before_last_occurrence}.{file_extension}")
-            
-        
         
         #####################################
         # image_link_to_path has paths of downloaded paths now we need to make collage 
@@ -433,26 +473,55 @@ if __name__=='__main__':
         for i in page_link_to_paths: 
             if len(page_link_to_paths[i]) == 0:
                 continue
-            collage_path = "../../collage_outputs/landscape_collages/"+generate_unique_path(i , args.location)+".jpg"
+            collage_dir = os.path.join(args.output_dir, "collage_outputs/landscape_collages")
+            if not  os.path.exists(collage_dir):
+                os.makedirs(collage_dir)
+            collage_path = os.path.join(collage_dir, (generate_unique_path(i , args.location)+".jpg"))
             create_collage( page_link_to_paths[i], collage_path)
             links_to_landscape_collage_path[i] = collage_path
             
         
-        print( links_to_landscape_collage_path)
-        json.dump(links_to_landscape_collage_path , open("links_to_landscape_collage_path.json" , 'w'))
-        json.dump( links_to_landscapes, open("links_to_landscapes.json" , 'w'))
+        print(links_to_landscape_collage_path)
+        
+        final_links_to_landscape.update(links_to_landscapes)
+        final_links_to_landscape_collage_path.update(links_to_landscape_collage_path)
+        
+        with open(FINAL_LINKS_TO_LANDSCAPE_COLLAGE_PATH, "w") as f:
+            json.dump(final_links_to_landscape_collage_path , f)
+        
+        with open(FINAL_LINKS_TO_LANDSCAPE_PATH, "w") as f:
+            json.dump(final_links_to_landscape, f)
 
     
     else: 
         ## now we need make collages for seals and flag 
+        
+        FINAL_LINKS_TO_SEALS_PATH_FILE = os.path.join(args.output_dir, "category_filtered_outputs/links_to_seals.json")
+        FINAL_LINKS_TO_SEALS_COLLAGE_PATH_FILE = os.path.join(args.output_dir, "category_filtered_outputs/links_to_seals_collage_path.json")
+        
+        FINAL_LINKS_TO_SEALS_PATH_FILE = "/home/suyash/final_repo/high_priority_redone_collage/links_to_seals.json"
+        FINAL_LINKS_TO_SEALS_COLLAGE_PATH_FILE = "/home/suyash/final_repo/high_priority_redone_collage/links_to_seals_collage_path.json"
+        
+        with open(FINAL_LINKS_TO_SEALS_PATH_FILE, "r") as f:
+            final_links_to_seals = json.load(f)
+        
+        with open(FINAL_LINKS_TO_SEALS_COLLAGE_PATH_FILE, "r") as f:
+            final_links_to_seals_collage_path = json.load(f)
+        
+        print("OG_LENGTH:", len(links))
+        links = list(set(links) - set(final_links_to_seals_collage_path.keys()))
+        print("NEW LENGTH:", len(links))
         links_to_seals={}
+        links_with_no_images = {}
         ## get landscapes link from wikipedia
         for i in tqdm(range(0 , len(links) , 50 )) : 
             headers = {f'User-Agent': 'walter.white/1.0 (walter.white@research{i}.standford.edu) research purpose'}
             results= asyncio.run(main(links[i:i+50], headers))
-            links_to_seals.update(extract_all_seals(results))
+            temp_links_to_seals, temp_links_with_no_images = extract_all_seals(results)
+            links_to_seals.update(temp_links_to_seals) # we get the links to the seals 
+            links_with_no_images.update(temp_links_with_no_images) # the links with no seals as such we may need to 
             
-        print(links_to_seals)
+        print(len(links_to_seals))
         print()
         
         combined_list_seals =[]
@@ -460,7 +529,43 @@ if __name__=='__main__':
             combined_list_seals.extend(list(i)) 
         
         combined_list_seals = list(set(combined_list_seals))
-        print(combined_list_seals)
+        print(len(combined_list_seals))
+        
+        combined_list_of_seals_with_no_images = []
+        
+        for i in links_with_no_images.values():
+            combined_list_of_seals_with_no_images.extend(list(i))
+        
+        combined_list_of_seals_with_no_images = list(set(combined_list_of_seals_with_no_images))
+        categories_to_verify = {}
+        # Now we need to get the categories to verify whether we need to keep which images. 
+        for i in tqdm(range(0 , len(combined_list_of_seals_with_no_images), 50 )):
+            headers = {f'User-Agent': 'walter.white/1.0 (walter.white@research{i}.standford.edu) research purpose'}
+            results= asyncio.run(main(combined_list_of_seals_with_no_images[i:i+50], headers))
+            categories_to_verify.update(get_all_categories(results))
+            
+        # now we get the good seals 
+        
+        good_images = {}
+        for k , v in categories_to_verify.items():
+            if is_good_image(v):
+                print(k,"Logo image found YAY.")
+                good_images[k] = v 
+                                
+        
+        
+        combined_list_seals.extend(list(good_images.keys()))
+        
+        combined_list_seals = list(set(combined_list_seals))
+        # Now add the good seals to the combined list of seals
+    
+        for k, v in links_with_no_images.items():
+            for i in v:
+                if i in good_images:
+                    links_to_seals.setdefault(k, [])
+                    links_to_seals[k].append(i)
+            
+        
         file_to_image_links_seals={}
         
         for i in tqdm(range(0 , len(combined_list_seals), 50 )):
@@ -490,16 +595,33 @@ if __name__=='__main__':
             
         # create collage for images
         links_to_seals_collage_path = {}
+        
         for i in page_link_to_paths_seals:
             if len(page_link_to_paths_seals[i]) == 0:
                 continue
-            collage_path = "/home/suyash/final_repo/WikiTableQuestions/seals_collages/"+generate_unique_path(i, location=args.location)+".jpg"
-            create_collage( page_link_to_paths_seals[i], collage_path)
+
+            # Define the base path for collages
+            base_path = os.path.join(args.output_dir, "collage_outputs/seal_collages")
+
+            # Check if the base path exists, if not, create it
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+            # Generate the collage file path
+            collage_path = os.path.join(base_path, generate_unique_path(i, location=args.location) + ".jpg")
+
+            # Create the collage
+            create_collage(page_link_to_paths_seals[i], collage_path)
+
+            # Map the link to the collage path
             links_to_seals_collage_path[i] = collage_path
+        # print( links_to_seals_collage_path)
         
-        print( links_to_seals_collage_path)
+        final_links_to_seals.update(links_to_seals)
+        final_links_to_seals_collage_path.update(links_to_seals_collage_path)
         
-        json.dump(links_to_seals_collage_path , open("links_to_seals_collage_path.json" , 'w'))
+        with open(FINAL_LINKS_TO_SEALS_COLLAGE_PATH_FILE, "w") as f:
+            json.dump(final_links_to_seals_collage_path , f)
         
-        
-        json.dump( links_to_seals, open("links_to_seals.json" , 'w'))
+        with open(FINAL_LINKS_TO_SEALS_PATH_FILE, "w") as f:
+            json.dump(final_links_to_seals, f)
