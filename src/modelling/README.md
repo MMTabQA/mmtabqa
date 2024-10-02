@@ -1,5 +1,5 @@
 
-# ML Model Prompt Creation and Evaluation
+# Modelling scripts
 
 ## Overview
 This repository contains two scripts that assist in machine learning (ML) model-related tasks. The first script is for creating prompts based on a dataset, while the second is for evaluating the model's performance using different metrics like exact match, substring match, and F1 score.
