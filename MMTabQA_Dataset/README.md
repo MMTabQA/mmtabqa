@@ -14,3 +14,6 @@
 │   └── visual_questions.jsonl => Contains the questions of Visual type.
 ├── image_id_to_image_path.json => Contains a mapping of image_id used in the tables to Image path. The images are available [here](https://mega.nz/file/TB8FUb7D#D7REnXhbJbd8mR6KkcJbdOkIGHCuY3mJkxQjR_39-2o).
 ```
+
+### Dataset Images
+The images for the dataset can be downloaded [here](https://mega.nz/file/TB8FUb7D#D7REnXhbJbd8mR6KkcJbdOkIGHCuY3mJkxQjR_39-2o).
