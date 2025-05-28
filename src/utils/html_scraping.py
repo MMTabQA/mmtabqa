@@ -8,6 +8,7 @@ import asyncio
 import time  # Import the time module for the blocking sleep
 import json
 from datetime import datetime
+import os
 
 DATASET_PATH = "./WikiTableQuestions"
 
@@ -80,30 +81,35 @@ def parse(results):
             
     return links_to_new_links
 
+BASE_DIR = '/home2/jainit/Hybrid_QA_MM/outputs_new_date'
+
 if __name__ == '__main__':
-    with open('/home2/jainit/Hybrid_QA_MM/outputs_new_date/asyncio_inputs/revision_ids_2_link_of_wikipedia_page.json', 'r') as pkl:
+    with open(os.path.join(BASE_DIR, "asyncio_inputs", "revision_ids_2_link_of_wikipedia_page.json"), 'r') as pkl:
         input_asyncio = list(set(json.load(pkl).values()))
    
-    # headers = {'User-Agent': 'walter.white/1.0 (walter.white@standford.edu) research purpose'}
-    try : 
-        with open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/asyncio_outputs/revision_ids_2_link_of_wikipedia_page.json",'r') as pkl:
-            all_results =json.load(pkl)
+    try: 
+        with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids_2_link_of_wikipedia_page.json"), 'r') as pkl:
+            all_results = json.load(pkl)
         input_asyncio = list(set(input_asyncio) - set(all_results.keys()))
     except:
         print("No file found")
         all_results = {}
+
     print(len(input_asyncio))
+    
     for i in tqdm(range(0, len(input_asyncio), 100)):
-        headers = {f'User-Agent': 'walter.white{i}/1.0 (walter.white@standford.edu) research purpose'}
+        headers = {f'User-Agent': f'walter.white{i}/1.0 (walter.white@standford.edu) research purpose'}
         results = asyncio.run(main(input_asyncio[i:i+100], headers))
+        
         if results is None or len(results) == 0:
             continue 
-        all_results.update({p[0]:p[1] for p in results})
-        if i%400 ==0:
-            with open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/asyncio_outputs/revision_ids_2_link_of_wikipedia_page.json", "w") as pkl:
+        
+        all_results.update({p[0]: p[1] for p in results})
+        
+        if i % 400 == 0:
+            with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids_2_link_of_wikipedia_page.json"), "w") as pkl:
                 json.dump(all_results, pkl)
-            time.sleep(10)  # Add a delay of 1 second after updating all_results
+            time.sleep(10)  # Add a delay of 10 seconds after updating all_results
 
-    with open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/asyncio_outputs/revision_ids_2_link_of_wikipedia_page.json", "w") as pkl:
+    with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids_2_link_of_wikipedia_page.json"), "w") as pkl:
         json.dump(all_results, pkl)
-

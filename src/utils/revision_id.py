@@ -7,6 +7,7 @@ import asyncio
 import time  # Import the time module for the blocking sleep
 import json
 from datetime import datetime
+import os
 
 async def get_page(session, url, headers):
     for _ in range(5):
@@ -79,11 +80,15 @@ def parse(results):
 
 if __name__ == '__main__':
     input_asyncio = []
-    with open('/home2/jainit/FeTAQA_MM/new_outputs/asyncio_inputs/revision_ids_queries.json','r') as pkl:
+    BASE_DIR = '/home2/jainit/FeTAQA_MM/new_outputs'
+
+    with open(os.path.join(BASE_DIR, "asyncio_inputs", "revision_ids_queries.json"), 'r') as pkl:
         input_asyncio = list(set(json.load(pkl).values()))
-    try : 
-        with open("/home2/jainit/FeTAQA_MM/new_outputs/asyncio_outputs/revision_ids.json",'r') as pkl:
-            all_results =json.load(pkl)
+
+    try:
+        with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids.json"), 'r') as pkl:
+            all_results = json.load(pkl)
+
         
     except :
         all_results = {}
@@ -101,11 +106,10 @@ if __name__ == '__main__':
             continue
         results = parse(results)
         all_results.update(results)
-        if i%300 ==0:
-            with open("/home2/jainit/FeTAQA_MM/new_outputs/asyncio_outputs/revision_ids.json", "w") as pkl:
+        if i % 300 == 0:
+            with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids.json"), "w") as pkl:
                 json.dump(all_results, pkl)
-            time.sleep(10)  # Add a delay of 1 second after updating all_results
+            time.sleep(10)  # Add a delay of 10 seconds after updating all_results
 
-    with open("/home2/jainit/FeTAQA_MM/new_outputs/asyncio_outputs/revision_ids.json", "w") as pkl:
+    with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids.json"), "w") as pkl:
         json.dump(all_results, pkl)
-

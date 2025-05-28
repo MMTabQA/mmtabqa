@@ -12,5 +12,5 @@
 │   ├── tables.jsonl => Contains all the tables of the dataset.
 │   ├── text_passages.zip => Contains the Multimodal Passages corresponding to entities mentioned in the tables for HybridQA. These are to be used for the entities which have been replaced by images in the HybridQA tables. **Only present in HybridQA**.
 │   └── visual_questions.jsonl => Contains the questions of Visual type.
-├── image_id_to_image_path.json => Contains a mapping of image_id used in the tables to Image path. The images are available [here]().
+├── image_id_to_image_path.json => Contains a mapping of image_id used in the tables to Image path. The images are available [here](https://mega.nz/file/TB8FUb7D#D7REnXhbJbd8mR6KkcJbdOkIGHCuY3mJkxQjR_39-2o).
 ```

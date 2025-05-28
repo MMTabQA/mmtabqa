@@ -5,8 +5,6 @@ To generate the FETAQA dataset for MMTABQA, refer to the notebook **`FETAQA-MM.i
 1. **Get Revision IDs**:  
    Use **`revision_id.py`** to fetch revision IDs for Wikipedia pages.
 
-2. **HTML Page Scraping**:  
-   Use **`html_scraping.py`** to scrape the required HTML pages.
 
 3. **Table Extraction**:  
    Extract tables from the scraped HTML pages with **`download_all_tables.py`**.
