@@ -7,11 +7,20 @@ from nltk.tokenize import word_tokenize
 from itertools import product
 from tqdm import tqdm
 from bs4 import BeautifulSoup
-url_to_table_id = json.load(open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/url_to_table_id.json", "r"))
+import os
+
+BASE_DIR = "/home/suyash/temp_testing_mmtabqa_upload" # IMPORTANT: Update this path.
+DATASET_TYPE = "fetaqa" # IMPORTANT: Update this
+
+
+
+
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "url_to_table_id.json"), "r") as f:
+    url_to_table_id = json.load(f)
 URL_template = 'https://en.wikipedia.org/w/api.php?action=query&titles={title}&prop=revisions&rvlimit=500&rvstart=2020-09-09T07%3A59%3A00Z&rvdir=older&format=json&redirects=1'
 
 
-file_path = "/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_tables.jsonl"
+file_path = os.path.join(BASE_DIR, "all_tables.jsonl") # Update this path to your JSONL file
 rev_cnt=0
 most_similar_tables = {}
 iii=0
@@ -24,13 +33,25 @@ with open(file_path, "r") as jsonl_file:
         
         # Now you can work with the JSON data as a Python dictionary
         # print(json_data)  # You can replace this with your processing logic
-        page_url = json_data['url']
+        print(json_data)
+        if DATASET_TYPE == "fetaqa":
+            page_url = json_data['page_wikipedia_url']
+        else:
+            page_url = json_data['url']
         # print(page_url)
         
         page_url = URL_template.format(title = page_url.split("en.wikipedia.org/wiki/")[1])
-        id = json_data['table_id']
+        
+        if DATASET_TYPE == "fetaqa":
+            id = json_data['feta_id']
+        else:
+            id = json_data['table_id']
         # raw_title = page_url.split("en.wikipedia.org/wiki/")[1]
-        table_1_df  = pd.DataFrame(json_data['table'])
+        if DATASET_TYPE == "fetaqa":
+            table_array = json_data['table_array']
+        else:
+            table_array = json_data['table']
+        table_1_df  = pd.DataFrame(table_array)
         words = set()
         for i in range(table_1_df.shape[0]):
             for j in range(table_1_df.shape[1]):
@@ -50,7 +71,8 @@ with open(file_path, "r") as jsonl_file:
             for table_ids in url_to_table_id[page_url]:
                 try : 
                     # print(f"/home2/jainit/Hybrid_QA_MM/outputs_new_date/tables/{table_ids}.html")
-                    table_2_df = pd.read_html(f"/home2/jainit/Hybrid_QA_MM/outputs_new_date/tables/{table_ids}.html")[0]
+                    table_2_df = pd.read_html(os.path.join(BASE_DIR, "tables", f"{table_ids}.html"))[0]
+
                     # print("hi")
                     words2 = set()
                     for i in range(table_2_df.shape[0]):
@@ -77,7 +99,9 @@ with open(file_path, "r") as jsonl_file:
         most_similar_tables[id] =(page_url,table_id_with_max_similarity, max_similarity) 
 
 
-json.dump(most_similar_tables,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/most_similar_tables.json","w"))
+# json.dump(most_similar_tables,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/most_similar_tables.json","w"))
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "most_similar_tables.json"), "w") as f:
+    json.dump(most_similar_tables, f, indent=4)
 
 # open the  html of the table and get table_d:link_list for each cell 
 table_links = {}
@@ -87,7 +111,7 @@ for feta_id, table_info in tqdm(most_similar_tables.items()):
     if table_id is None:
            
         continue
-    with open(f"/home2/jainit/Hybrid_QA_MM/outputs_new_date/tables/{table_id}.html", "r") as f:
+    with open(os.path.join(BASE_DIR, "tables", f"{table_ids}.html"), "r") as f:
         html = f.read()
         soup = BeautifulSoup(html, 'lxml')
         tables = soup.find_all('table')
@@ -106,10 +130,15 @@ for feta_id, table_info in tqdm(most_similar_tables.items()):
 for table_id in table_links:
     for link in table_links[table_id]:
         table_links[table_id][link]= table_links[table_id][link].lower().strip().replace("\n", " ").replace("\t", " ").replace("\r", " ").replace("  ", " ")
-json.dump(table_links,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/table_links.json","w"))
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "table_links.json"), "w") as f:
+    # json.dump(table_links,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/table_links.json","w"))
+    # print("Wrote table links to file")
+    f.write(json.dumps(table_links, indent=4))
 
-file_path = "/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_tables.jsonl"
-f  = open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_tables_new.jsonl", "w")
+# file_path = "/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_tables.jsonl"
+file_path = os.path.join(BASE_DIR, "all_tables.jsonl") # Update this path to your JSONL file
+new_file_path = os.path.join(BASE_DIR, "all_tables_new.jsonl") # Update this path to your new JSONL file
+f  = open(new_file_path, "w")
 i=0
 j=0 
 links_not_in_html = []
@@ -118,9 +147,17 @@ all_links = set()
 
 with open(file_path, "r") as jsonl_file:
     for line  in tqdm(jsonl_file) :
+        
         json_data = json.loads(line)
-        page_url = json_data['url']
-        table = json_data['table']
+        
+        if DATASET_TYPE == "fetaqa":
+            page_url = json_data['page_wikipedia_url']
+        else:
+            page_url = json_data['url']
+        if DATASET_TYPE == "fetaqa":
+            table = json_data['table_array']
+        else:
+            table = json_data['table']
         cell_links = json_data['cells_to_link']
         ttable_id  = json_data['table_id']
         # print(cell_links)
@@ -222,7 +259,13 @@ for link in all_links :
         all_links_new[link] = link
         all_links_set.add(link)
     
-json.dump(all_links_new,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_links_dict.json","w"))
-json.dump(strings_to_links,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/strings_to_links.json","w"))
-# print(i, j)
-json.dump(list(all_links_set),open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_links_set.json","w"))
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "all_links_dict.json"), "w") as f:
+    json.dump(all_links_new, f, indent=4)
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "strings_to_links.json"), "w") as f:
+    json.dump(strings_to_links, f, indent=4)
+with open(os.path.join(BASE_DIR, "asyncio_outputs", "all_links_set.json"), "w") as f:
+    json.dump(list(all_links_set), f, indent=4)
+# json.dump(all_links_new,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_links_dict.json","w"))
+# json.dump(strings_to_links,open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/strings_to_links.json","w"))
+# # print(i, j)
+# json.dump(list(all_links_set),open("/home2/jainit/Hybrid_QA_MM/outputs_new_date/all_links_set.json","w"))

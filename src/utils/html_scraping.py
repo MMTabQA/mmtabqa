@@ -81,10 +81,10 @@ def parse(results):
             
     return links_to_new_links
 
-BASE_DIR = '/home2/jainit/Hybrid_QA_MM/outputs_new_date'
+BASE_DIR = '/home/suyash/temp_testing_mmtabqa_upload/'
 
 if __name__ == '__main__':
-    with open(os.path.join(BASE_DIR, "asyncio_inputs", "revision_ids_2_link_of_wikipedia_page.json"), 'r') as pkl:
+    with open(os.path.join(BASE_DIR, "asyncio_outputs", "revision_ids.json"), 'r') as pkl:
         input_asyncio = list(set(json.load(pkl).values()))
    
     try: 

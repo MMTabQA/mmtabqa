@@ -22,7 +22,9 @@ image_id_to_paths = {}
 #     all_links= json.load(p)
 
 # links_all = {v:k for k,v in all_links.items()}
-DATASET_PATH = "/scratch/jainit_ftq/ftq_images/"
+BASE_DIR = '/home/suyash/temp_testing_mmtabqa_upload'
+IMAGES_DIRECTORY = os.path.join(BASE_DIR, "images")
+os.makedirs(IMAGES_DIRECTORY, exist_ok=True)
 
 async def get_page(session, url, headers, max_retries=10, retry_delay=60):
     for _ in range(max_retries):
@@ -39,7 +41,7 @@ async def get_page(session, url, headers, max_retries=10, retry_delay=60):
                 before_last_occurrence= before_last_occurrence[:200]
 
                 # Save the compressed image
-                path = os.path.join(DATASET_PATH, f"{before_last_occurrence}.{file_extension}")
+                path = os.path.join(IMAGES_DIRECTORY, f"{before_last_occurrence}.{file_extension}")
                 img.save(path, optimize=True, quality=90)
                 image_id_to_paths[url]= path 
                 print(path)
@@ -70,7 +72,8 @@ async def main(urls, headers, delay=0, max_retries=3, retry_delay=2):
 if __name__ == '__main__':
     links_with_no_entity = []
     # SET THIS TO THE PATH OF THE JSON FILE CONTAINING THE LINKS NAMED 'link_to_single_image.json'
-    with open('/home2/jainit/FeTAQA_MM/new_outputs/link_to_single_image.json', 'r') as pkl:
+    input_path = os.path.join(BASE_DIR, "asyncio_outputs", "link_to_single_image.json")
+    with open(input_path) as pkl:
         links_with_no_entity = list(set(list(json.load(pkl).values())))
     new_links_with_no_entity = []
     print(len(links_with_no_entity))
@@ -98,5 +101,6 @@ if __name__ == '__main__':
             # with open("results_link_to_reference.json", "w") as pkl:
             #     json.dump(all_results, pkl)
             time.sleep(20)  # Add a delay of 1 second after updating all_results
-    with open("/home2/jainit/FeTAQA_MM/new_outputs/download_paths.json", "w") as pkl:
+    output_path = os.path.join(BASE_DIR, "asyncio_outputs", "downloaded_images.json")
+    with open(output_path, "w") as pkl:
                 json.dump(image_id_to_paths, pkl)

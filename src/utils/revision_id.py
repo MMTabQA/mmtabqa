@@ -80,7 +80,8 @@ def parse(results):
 
 if __name__ == '__main__':
     input_asyncio = []
-    BASE_DIR = '/home2/jainit/FeTAQA_MM/new_outputs'
+    BASE_DIR = '/home/suyash/temp_testing_mmtabqa_upload/'
+    
 
     with open(os.path.join(BASE_DIR, "asyncio_inputs", "revision_ids_queries.json"), 'r') as pkl:
         input_asyncio = list(set(json.load(pkl).values()))
